@@ -1,11 +1,10 @@
 import sys
 import os
 import time
-import ctypes
 import shutil
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QComboBox, QPushButton, QFileDialog,
-    QVBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QProgressBar, QSizePolicy
+    QVBoxLayout, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit, QProgressBar, QSizePolicy
 )
 from PyQt5.QtCore import QProcess, Qt
 from PyQt5.QtGui import QIcon, QColor, QPalette
@@ -35,7 +34,7 @@ class FileWriter(QWidget):
         self.initUI()
 
     def initUI(self):
-        self.setMinimumSize(400, 300)
+        self.setMinimumSize(350, 250)
         self.setMaximumSize(400, 300)   # Aumento del tamaño de la ventana
         self.setWindowTitle("FistBoot")
         
@@ -56,25 +55,29 @@ class FileWriter(QWidget):
             if os.path.exists(drive):
                 drive_list.append(drive)
 
-        # Seleccionador de unidades
-        self.drives_selection_box = QComboBox()
-        self.drives_selection_box.addItems(drive_list)
-        layout.addWidget(self.drives_selection_box)
-
         # Botón para seleccionar archivo
         self.button_selectFile = QPushButton(text_button_selectfile)
         self.button_selectFile.clicked.connect(self.getFile)
         layout.addWidget(self.button_selectFile)
 
-        # Botón para escribir en la unidad
+        # Seleccionador de unidades
+        self.drives_selection_box = QComboBox()
+        self.drives_selection_box.addItems(drive_list)
+        layout.addWidget(self.drives_selection_box)
+
+        # Layout para los botones de preparar unidad y cancelar
+        button_layout = QHBoxLayout()
+        layout.addLayout(button_layout)
+
+        # Botón para preparar la unidad
         self.button_write = QPushButton(text_button_prepare)
         self.button_write.clicked.connect(self.writeToFile)
-        layout.addWidget(self.button_write)
+        button_layout.addWidget(self.button_write)
 
         # Botón para cancelar
         self.cancel_button = QPushButton("Cancelar")
         self.cancel_button.clicked.connect(self.cancelWriting)
-        layout.addWidget(self.cancel_button)
+        button_layout.addWidget(self.cancel_button)
 
         # Estado
         self.statusText = QLabel(text_status + " " + text_ready)
@@ -117,29 +120,29 @@ class FileWriter(QWidget):
             padding: 5px;
             border-radius:5px;
         """)
-        self.progressBar.setStyleSheet("""
-            QProgressBar {
-                border: 1px solid #444;
-                border-radius: 5px;
-                text-align: center;
-            }
-            QProgressBar::chunk {
-                background-color: #00ff00;
-                border-radius: 5px;
-            }
-        """)
-        self.console.setStyleSheet("""
-            background-color: #333; 
-            color: #fff;
-            border: 1px solid gray;
-            border-radius:5px;
-        """)
         self.cancel_button.setStyleSheet("""
             background-color: #444; 
             color: #fff;
             border: 1px solid gray;
             padding: 5px;
             border-radius:5px;
+        """)
+        self.progressBar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #444;
+                border-radius: 7px;
+                text-align: center;
+            }
+            QProgressBar::chunk {
+                background-color: #00ff00;
+                border-radius: 7px;
+            }
+        """)
+        self.console.setStyleSheet("""
+            background-color: #17202A; 
+            color: #fff;
+            border: 1px solid gray;
+            border-radius:9px;
         """)
 
     def writeToFile(self):
