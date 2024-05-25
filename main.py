@@ -2,6 +2,7 @@ import sys
 import os
 import shutil
 import subprocess
+import ctypes
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFileDialog, QComboBox, QProgressBar, QMessageBox, QStackedWidget
 )
@@ -79,20 +80,23 @@ class IsoBurnThread(QThread):
 
     def burn_iso_windows(self):
         try:
+            drive_number = self.get_drive_number(self.drive)
+            if drive_number is None:
+                raise Exception(f"No se pudo encontrar el número del disco para la unidad {self.drive}")
             script = f"""
-            select disk {self.drive}
+            select disk {drive_number}
             clean
             create partition primary
             select partition 1
             active
             format fs=ntfs quick
-            assign letter={self.drive}
+            assign letter={self.drive[0]}
             exit
             """
             with open("diskpart_script.txt", "w") as file:
                 file.write(script)
             subprocess.run(["diskpart", "/s", "diskpart_script.txt"], check=True)
-            subprocess.run(["xcopy", self.iso, f"{self.drive}:\\", "/s", "/e", "/f"], check=True)
+            subprocess.run(["xcopy", self.iso, f"{self.drive}", "/s", "/e", "/f"], check=True)
             os.remove("diskpart_script.txt")
         except subprocess.CalledProcessError as e:
             self.error.emit(str(e))
@@ -100,6 +104,19 @@ class IsoBurnThread(QThread):
             self.error.emit("Permisos insuficientes. Por favor, ejecute la aplicación como administrador.")
         except Exception as e:
             self.error.emit(str(e))
+
+    def get_drive_number(self, drive_letter):
+        command = "wmic logicaldisk get caption,deviceid,drivetype"
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        for line in result.stdout.splitlines():
+            if drive_letter in line and '2' in line:  # DriveType 2 means removable drive
+                drive_id = line.split()[1]
+                command = f"wmic diskdrive where \"DeviceID='{drive_id}'\" get index"
+                result = subprocess.run(command, shell=True, capture_output=True, text=True)
+                for line in result.stdout.splitlines():
+                    if line.strip().isdigit():
+                        return line.strip()
+        return None
 
     def stop(self):
         self.is_running = False
@@ -324,8 +341,17 @@ class MainWindow(QWidget):
         self.iso_progressBar.setValue(0)
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.populate_drive_selection()  # Llamar después de definir los QComboBox
-    apply_stylesheet(app, theme='dark_teal.xml')
-    sys.exit(app.exec_())
+    def is_admin():
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin()
+        except:
+            return False
+
+    if is_admin():
+        app = QApplication(sys.argv)
+        window = MainWindow()
+        window.populate_drive_selection()  # Llamar después de definir los QComboBox
+        apply_stylesheet(app, theme='dark_teal.xml')
+        sys.exit(app.exec_())
+    else:
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
